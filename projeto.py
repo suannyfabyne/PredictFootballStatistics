@@ -24,7 +24,14 @@ from sklearn.metrics import classification_report
 from sklearn import metrics
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.tree import DecisionTreeRegressor
-
+from keras.models import Sequential
+from keras.layers import Dense
+from keras.layers import Activation
+from keras.utils import to_categorical
+from keras import layers
+import keras
+import itertools
+from keras.utils import np_utils
 def correlation_matrix(df):
     corr=df.corr()
     sns.heatmap(corr, 
@@ -94,8 +101,9 @@ def CutDataset(dataset, entrada, saida, fora):
         x = x.drop(labels=[i], axis=1)  
         y = y.drop(labels=[i], axis=1)
 
-    return x, y        
-    
+    return x, y    
+
+
 def NewColumn(corners, data):                 
     for i in range(0, 20):
         corners[i][1] = (corners[i][1]/(len(data)/10))
@@ -106,7 +114,8 @@ def NewColumn(corners, data):
         data = data.set_value(indexH, 'MeanCornersHome', corners[i][1], takeable=False)
         indexA = data.index[data['AwayTeam'] == corners[i][0]].tolist()
         data = data.set_value(indexA, 'MeanCornersAway', corners[i][1], takeable=False)
-        
+
+      
 #Lendo arquivos
 data_0910 = pd.read_csv('09-10.csv')
 data_1011 = pd.read_csv('10-11.csv')
@@ -215,10 +224,10 @@ corners1516 =   [['Liverpool',	265],
                 ['Stoke City',	153],
                 ['Sunderland	',153]]
 
-NewColumn(corners1819, data_1819)   
-NewColumn(corners1718, data_1718)   
-NewColumn(corners1617, data_1617)   
-NewColumn(corners1516, data_1516)   
+#NewColumn(corners1819, data_1819)   
+#NewColumn(corners1718, data_1718)   
+#NewColumn(corners1617, data_1617)   
+#NewColumn(corners1516, data_1516)   
 
 #Atribuindo pesos, repetindo instâncias, para jogos mais recentes valerem mais
 for i in range(1,6):
@@ -286,7 +295,19 @@ dataset = dataset.drop(labels=['AwayTeamRedCards'], axis=1)
 dataset = dataset.drop(labels=['HomeTeamShotsTarget'], axis=1)
 dataset = dataset.drop(labels=['AwayTeamShotsTarget'], axis=1)
 
-#PREVENDO GOLS E VENCEDORES
+
+
+
+
+
+
+
+
+
+
+
+
+#USING REGRESSION METHODS
 
 entrada = ['HomeTeam', 'AwayTeam', 'HTResult', 'Referee', 'Season', 'HTHomeGoals', 'HTAwayGoals', 'B365H', 'B365D', 'B365A']
 saida = ['FTHomeGoals', 'FTAwayGoals', 'FTResult']
@@ -304,26 +325,97 @@ print("--------MLPREGRESSOR-----------")
 RegMPL(MLPRegressor, x_train, y_train, x_test, y_test)
 
 
+
+
+
+
+from sklearn.utils import resample
+
+
+def balance_classes_up_sampling(df, class_name, majority_value, minority_value):
+    # Separate majority and minority classes
+    df_majority = df[df[class_name]==majority_value]
+    df_minority = df[df[class_name]==minority_value]
+    df = df[df[class_name]!=majority_value]
+    df = df[df[class_name]!=minority_value]
+    # Upsample minority class
+    df_minority_upsampled = resample(df_minority, 
+                                 replace=True,     # sample with replacement
+                                 n_samples=len(df_majority),    # to match majority class
+                                 random_state=123) # reproducible results
+ 
+    # Combine majority class with upsampled minority class
+    df_upsampled = pd.concat([df_majority, df_minority_upsampled])
+    df = pd.concat([df, df_upsampled])
+    # Display new class counts
+    return df
+
+def plot_histogram_balancing(dataframe,class_name):
+    print(dataframe[class_name].value_counts().to_dict())
+    plt.show(dataframe.hist(column=class_name, color='red'))
+    plt.clf()
+    plt.cla()
+    plt.close()
+
+print(len(dataset))
+plot_histogram_balancing(dataset, 'FTResult')
+
+dataset = balance_classes_up_sampling(dataset, 'FTResult', 0, 2)
+dataset = balance_classes_up_sampling(dataset, 'FTResult', 0, 1)
+
+plot_histogram_balancing(dataset, 'FTResult')
+print(len(dataset))
+
+################# USING DEEP LEARNING
 entrada = ['HomeTeam', 'AwayTeam', 'Referee', 'Season',  'B365H', 'B365D', 'B365A', 'HTResult','HTHomeGoals', 'HTAwayGoals']
 saida = ['FTResult']
 fora = ['FTHomeGoals', 'FTAwayGoals','HomeShots', 'AwayShots',
         'HomeTeamFouls','AwayTeamFouls', 'HomeTeamCorners', 'AwayTeamCorners', 'HomeTeamYellowCards', 'AwayTeamYellowCards']
-x, y = CutDataset(dataset, entrada, saida, fora)
-x_train, x_test, y_train, y_test = train_test_split(x, y, test_size=0.25)
-print("---------DECTREECLASS----------")
-Class(DecisionTreeClassifier, x_train, y_train, x_test, y_test)
 
-###################ESCANTEIOS############
+dataset_train = dataset.loc[dataset['Season'] <= 6]
+dataset_val = dataset.loc[dataset['Season'] == 7]
+dataset_test = dataset.loc[dataset['Season'] >= 8]
 
-entrada = ['HomeTeam', 'AwayTeam', 'HTResult', 'Referee', 'Season', 'HTHomeGoals', 'HTAwayGoals', 'B365H', 'B365D', 'B365A']
-saida = ['HomeTeamCorners', 'AwayTeamCorners']
-fora = ['FTHomeGoals', 'FTAwayGoals', 'FTResult', 'HomeShots', 'AwayShots',
-        'HomeTeamFouls','AwayTeamFouls', 'HomeTeamYellowCards', 'AwayTeamYellowCards']
-x, y = CutDataset(dataset, entrada, saida, fora)
-x_train, x_test, y_train, y_test = train_test_split(x, y, test_size=0.25)
-print("------------BAYESIANRIDGE-------------")
-RegBay(BayesianRidge, x_train, y_train, x_test, y_test)
-print("-------DECTREEREG-------")
-RegMPL(DecisionTreeRegressor, x_train, y_train, x_test, y_test)
-print("--------MLPREGRESSOR-----------")
-RegMPL(MLPRegressor, x_train, y_train, x_test, y_test)
+X_train, y_train = CutDataset(dataset_train, entrada, saida, fora)
+X_val, y_val = CutDataset(dataset_val, entrada, saida, fora)
+X_test, y_test = CutDataset(dataset_test, entrada, saida, fora)
+
+y_train = np_utils.to_categorical(y_train, 3)
+y_val = np_utils.to_categorical(y_val, 3)
+y_test = np_utils.to_categorical(y_test, 3)
+
+print(len(X_train), 'instâncias no conjunto treinamento.')
+print(len(X_val), 'instâncias no conjunto validação.')
+print(len(X_test), 'instâncias no conjunto teste.')
+
+
+
+model = Sequential()
+
+model.add(Dense(24, input_dim=10, init="uniform",activation="relu"))
+model.add(Dense(24, activation="relu", kernel_initializer="uniform"))
+model.add(Dense(24, activation="relu", kernel_initializer="uniform"))
+model.add(Dense(24, activation="relu", kernel_initializer="uniform"))
+model.add(Dense(3, activation="softmax", kernel_initializer="uniform"))
+
+model.summary()
+
+model.compile(
+ optimizer = "adam",
+ loss = "categorical_crossentropy",
+ metrics = ["accuracy"]
+)
+
+ES = keras.callbacks.EarlyStopping(monitor='val_loss', min_delta=1e-3, patience=25)
+
+results = model.fit(
+ X_train, y_train,
+ epochs= 500,
+ validation_data = (X_val, y_val),
+ callbacks=[ES]
+)
+
+y_pred = model.predict(X_test)
+
+accuracy = metrics.accuracy_score(y_test.argmax(1), y_pred.argmax(1))
+print(accuracy)
