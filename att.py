@@ -27,7 +27,13 @@ from sklearn.tree import DecisionTreeRegressor
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.preprocessing import LabelEncoder
 from sklearn.preprocessing import OneHotEncoder
-
+from keras.models import Sequential
+from keras.layers import Dense
+from keras.layers import Activation
+from keras.utils import to_categorical
+from keras import layers
+import keras
+from keras.utils import np_utils
 def correlation_matrix(df):
     corr=df.corr()
     sns.heatmap(corr, 
@@ -474,27 +480,33 @@ dataset = dataset.drop(labels=['Date'], axis=1)
 #Carategorização de colunas
 label_encoder = LabelEncoder()
 onehot_encoder = OneHotEncoder(sparse=False)
-
-dataset['FTR'] = label_encoder.fit_transform(dataset['FTR'])
-dataset['FTR'] = dataset['FTR'].reshape(len(dataset['FTR']), 1)
-onehot_encoded = onehot_encoder.fit_transform(dataset['FTR'])
-
-dataset['HTR'] = label_encoder.fit_transform(dataset['HTR'])
-dataset['HTR'] = dataset['HTR'].reshape(len(dataset['HTR']), 1)
-onehot_encoded = onehot_encoder.fit_transform(dataset['HTR'])
-
-dataset['HomeTeam'] = label_encoder.fit_transform(dataset['HomeTeam'])
-dataset['HomeTeam'] = dataset['HomeTeam'].reshape(len(dataset['HomeTeam']), 1)
-onehot_encoded = onehot_encoder.fit_transform(dataset['HomeTeam'])
-
-dataset['AwayTeam'] = label_encoder.fit_transform(dataset['AwayTeam'])
-dataset['AwayTeam'] = dataset['AwayTeam'].reshape(len(dataset['AwayTeam']), 1)
-onehot_encoded = onehot_encoder.fit_transform(dataset['AwayTeam'])
-
-dataset['Referee'] = label_encoder.fit_transform(dataset['Referee'])
-dataset['Referee'] = dataset['Referee'].reshape(len(dataset['Referee']), 1)
-onehot_encoded = onehot_encoder.fit_transform(dataset['Referee'])
-
+dataset['FTR'] = pd.Categorical(dataset['FTR']).codes
+dataset['HTR'] = pd.Categorical(dataset['HTR']).codes
+dataset['HomeTeam'] = pd.Categorical(dataset['HomeTeam']).codes
+dataset['AwayTeam'] = pd.Categorical(dataset['AwayTeam']).codes
+dataset['Referee'] = pd.Categorical(dataset['Referee']).codes
+# =============================================================================
+# dataset['FTR'] = label_encoder.fit_transform(dataset['FTR'])
+# dataset['FTR'] = dataset['FTR'].reshape(len(dataset['FTR']), 1)
+# onehot_encoded = onehot_encoder.fit_transform(dataset['FTR'])
+# 
+# dataset['HTR'] = label_encoder.fit_transform(dataset['HTR'])
+# dataset['HTR'] = dataset['HTR'].reshape(len(dataset['HTR']), 1)
+# onehot_encoded = onehot_encoder.fit_transform(dataset['HTR'])
+# 
+# dataset['HomeTeam'] = label_encoder.fit_transform(dataset['HomeTeam'])
+# dataset['HomeTeam'] = dataset['HomeTeam'].reshape(len(dataset['HomeTeam']), 1)
+# onehot_encoded = onehot_encoder.fit_transform(dataset['HomeTeam'])
+# 
+# dataset['AwayTeam'] = label_encoder.fit_transform(dataset['AwayTeam'])
+# dataset['AwayTeam'] = dataset['AwayTeam'].reshape(len(dataset['AwayTeam']), 1)
+# onehot_encoded = onehot_encoder.fit_transform(dataset['AwayTeam'])
+# 
+# dataset['Referee'] = label_encoder.fit_transform(dataset['Referee'])
+# dataset['Referee'] = dataset['Referee'].reshape(len(dataset['Referee']), 1)
+# onehot_encoded = onehot_encoder.fit_transform(dataset['Referee'])
+# 
+# =============================================================================
 
 
 
@@ -527,15 +539,19 @@ dataset = dataset.drop(labels=['HomeTeamRedCards'], axis=1)
 dataset = dataset.drop(labels=['AwayTeamRedCards'], axis=1)
 dataset = dataset.drop(labels=['HomeTeamShotsTarget'], axis=1)
 dataset = dataset.drop(labels=['AwayTeamShotsTarget'], axis=1)
-
-
+dataset = dataset.drop(labels=['HomeShots'], axis=1)
+dataset = dataset.drop(labels=['AwayShots'], axis=1)
+dataset = dataset.drop(labels=['HomeTeamFouls'], axis=1)
+dataset = dataset.drop(labels=['AwayTeamFouls'], axis=1)
 dataset.reset_index(drop=True, inplace=True)
 
 
 ######ESCANTEIOS
-entrada = ['HomeTeam', 'AwayTeam', 'Season', 'MeanCornersHome', 'MeanCornersAway', 'MeanShotsHome', 'MeanShotsAway']     
+entrada = ['HomeTeam', 'AwayTeam', 'Season', 'MeanCornersHome', 'MeanCornersAway', 'MeanShotsHome', 'MeanShotsAway', 'HTResult','HTHomeGoals','HTAwayGoals', 'B365H', 'B365D', 'B365A', 'MeanGoalsHome', 'MeanGoalsAway','MeanGoalsConHome', 'MeanGoalsConAway']     
 saida = ['HomeTeamCorners', 'AwayTeamCorners']
-fora = ['FTHomeGoals', 'FTAwayGoals','HomeShots', 'AwayShots', 'HomeTeamFouls','AwayTeamFouls', 'FTResult', 'HomeTeamYellowCards', 'B365H', 'B365D', 'B365A', 'AwayTeamYellowCards',  'MeanCardsHome', 'MeanCardsAway', 'MeanGoalsHome', 'MeanGoalsAway','MeanGoalsConHome', 'MeanGoalsConAway', 'Referee', 'HTResult','HTHomeGoals','HTAwayGoals']
+fora = ['FTHomeGoals', 'FTAwayGoals', 'FTResult', 'HomeTeamYellowCards', 'AwayTeamYellowCards',  'MeanCardsHome', 'MeanCardsAway', 'Referee']
+
+print("----------NUMESCANTEIOS----------")
 
 x, y = CutDataset(dataset, entrada, saida, fora)
 x_train, x_test, y_train, y_test = train_test_split(x, y, test_size=0.25)
@@ -548,9 +564,10 @@ RegRS(MLPRegressor, x_train, y_train, x_test, y_test)
 
 ###### NUM GOLS
 entrada = ['HomeTeam', 'AwayTeam', 'Season', 'MeanCornersHome', 'MeanCornersAway', 'MeanShotsHome', 'MeanShotsAway', 'B365H', 'B365D', 'B365A', 'MeanGoalsHome', 'MeanGoalsAway','MeanGoalsConHome', 'MeanGoalsConAway', 'HTResult','HTHomeGoals','HTAwayGoals']     
-saida = ['HomeTeamCorners', 'AwayTeamCorners']
-fora = ['FTHomeGoals', 'FTAwayGoals','HomeShots', 'AwayShots', 'HomeTeamFouls','AwayTeamFouls', 'FTResult', 'HomeTeamYellowCards',  'AwayTeamYellowCards',  'MeanCardsHome', 'MeanCardsAway',  'Referee']
+saida = ['FTHomeGoals', 'FTAwayGoals']
+fora = ['HomeTeamCorners', 'AwayTeamCorners', 'FTResult', 'HomeTeamYellowCards',  'AwayTeamYellowCards',  'MeanCardsHome', 'MeanCardsAway',  'Referee']
 
+print("----------NUMGOLS----------")
 x, y = CutDataset(dataset, entrada, saida, fora)
 x_train, x_test, y_train, y_test = train_test_split(x, y, test_size=0.25)
 x_train, y_train = Fduplicated(x_train, y_train)
@@ -558,3 +575,92 @@ x_train, y_train = Fduplicated(x_train, y_train)
 RegBay(RandomForestRegressor, x_train, y_train, x_test, y_test)
 RegBay(BayesianRidge, x_train, y_train, x_test, y_test)
 RegRS(MLPRegressor, x_train, y_train, x_test, y_test)
+
+
+###### YELLOW CARDS
+entrada = ['HomeTeam', 'AwayTeam', 'Season', 'MeanShotsHome', 'MeanShotsAway', 'B365H', 'B365D', 'B365A', 'MeanGoalsHome', 'MeanGoalsAway','MeanGoalsConHome', 'MeanGoalsConAway', 'HTResult','HTHomeGoals','HTAwayGoals',  'Referee',  'MeanCardsHome', 'MeanCardsAway']     
+saida = ['HomeTeamYellowCards',  'AwayTeamYellowCards']
+fora = ['FTHomeGoals', 'FTAwayGoals', 'HomeTeamCorners', 'AwayTeamCorners', 'FTResult', 'MeanCornersHome', 'MeanCornersAway']
+
+print("----------CARDS----------")
+    
+x, y = CutDataset(dataset, entrada, saida, fora)
+x_train, x_test, y_train, y_test = train_test_split(x, y, test_size=0.25)
+x_train, y_train = Fduplicated(x_train, y_train)
+
+RegBay(RandomForestRegressor, x_train, y_train, x_test, y_test)
+RegBay(BayesianRidge, x_train, y_train, x_test, y_test)
+RegRS(MLPRegressor, x_train, y_train, x_test, y_test)
+
+
+###### QUEM GANHA
+entrada = ['HomeTeam', 'AwayTeam', 'Season', 'MeanCornersHome', 'MeanCornersAway', 'MeanShotsHome', 'MeanShotsAway', 'B365H', 'B365D', 'B365A', 'MeanGoalsHome', 'MeanGoalsAway','MeanGoalsConHome', 'MeanGoalsConAway', 'HTResult','HTHomeGoals','HTAwayGoals',  'Referee',  'MeanCardsHome', 'MeanCardsAway']     
+saida = ['FTResult']
+fora = ['HomeTeamYellowCards',  'AwayTeamYellowCards','FTHomeGoals', 'FTAwayGoals', 'HomeTeamCorners', 'AwayTeamCorners']
+
+print("----------VITORIA----------")
+
+
+x, y = CutDataset(dataset, entrada, saida, fora)
+x_train, x_test, y_train, y_test = train_test_split(x, y, test_size=0.2,  random_state=1)
+x_train, y_train = Fduplicated(x_train, y_train)
+
+Class(KNeighborsClassifier, x_train, y_train, x_test, y_test)
+Class(DecisionTreeClassifier, x_train, y_train, x_test, y_test)
+
+
+######### REDE NEURAL
+
+entrada = ['HomeTeam', 'AwayTeam', 'Season', 'MeanCornersHome', 'MeanCornersAway', 'MeanShotsHome', 'MeanShotsAway', 'B365H', 'B365D', 'B365A', 'MeanGoalsHome', 'MeanGoalsAway','MeanGoalsConHome', 'MeanGoalsConAway', 'HTResult','HTHomeGoals','HTAwayGoals',  'Referee',  'MeanCardsHome', 'MeanCardsAway']     
+saida = ['FTResult']
+fora = ['HomeTeamYellowCards',  'AwayTeamYellowCards','FTHomeGoals', 'FTAwayGoals', 'HomeTeamCorners', 'AwayTeamCorners']
+
+print("----------VITORIA----------")
+
+
+x, y = CutDataset(dataset, entrada, saida, fora)
+x_train, x_test, y_train, y_test = train_test_split(x, y, test_size=0.2,  random_state=1)
+x_train, y_train = Fduplicated(x_train, y_train)
+
+x_train, x_val, y_train, y_val = train_test_split(x_train, y_train, test_size=0.125, random_state=1)
+
+
+y_train = np_utils.to_categorical(y_train, 3)
+y_test = np_utils.to_categorical(y_test, 3)
+y_val = np_utils.to_categorical(y_val, 3)
+
+model = Sequential()
+
+model.add(Dense(40, input_dim=20, init="uniform",activation="relu"))
+model.add(Dense(120, activation="tanh", kernel_initializer="uniform"))
+model.add(Dense(120, activation="tanh", kernel_initializer="uniform"))
+model.add(Dense(20, activation="tanh", kernel_initializer="uniform"))
+model.add(Dense(3, activation="softmax", kernel_initializer="uniform"))
+
+model.summary()
+
+model.compile(
+ optimizer = "adam",
+ loss = "categorical_crossentropy",
+ metrics = ["accuracy"]
+)
+
+ES = keras.callbacks.EarlyStopping(monitor='val_loss', min_delta=1e-3, patience=25)
+
+
+results = model.fit(
+ x_train, y_train,
+ epochs= 100,
+ validation_data = (x_val, y_val),
+ callbacks=[ES]
+)
+
+y_pred = model.predict(x_test)
+
+accuracy = metrics.accuracy_score(y_test.argmax(1), y_pred.argmax(1))
+print(accuracy)
+print("-------------------")
+
+print("Confusion Matrix: ", confusion_matrix(y_test.argmax(1), y_pred.argmax(1)))
+print(y_pred)
+print(y_test)
